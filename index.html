@@ -1,0 +1,464 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Modulith Insert Generator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: fixed-width parameter rail on the left, viewport fills the rest; stacks at phone width. */
+:root {
+  --bg: #eef0ee; --panel: #ffffff; --fg: #1c2124; --muted: #62706f; --line: #d3d9d6;
+  --accent: #2b6a8c; --accent-fg: #ffffff; --bad: #a83a2e;
+  --model: #d9873a; --edge: #2b2f33;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141819; --panel: #1c2124; --fg: #e4e8e8; --muted: #93a09f; --line: #2d3539;
+  --accent: #6fb3d6; --accent-fg: #0f1a21; --bad: #ef8a7b; --model: #d9873a; --edge: #0d1012; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141819; --panel: #1c2124; --fg: #e4e8e8; --muted: #93a09f; --line: #2d3539;
+  --accent: #6fb3d6; --accent-fg: #0f1a21; --bad: #ef8a7b; --model: #d9873a; --edge: #0d1012; color-scheme: dark }
+
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
+.app { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
+.rail { min-width: 0; overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel);
+  padding-block: 12px 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 12px; }
+.view { min-width: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  padding-block: 12px; padding-left: 12px; padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto; height: auto; }
+  .rail { border-right: 0; border-top: 1px solid var(--line); padding-right: max(16px, env(safe-area-inset-right, 0px)); order: 2; }
+  .view { padding-left: max(16px, env(safe-area-inset-left, 0px)); height: 80vh; }
+}
+h1 { font-size: 15px; font-weight: 600; margin: 0 0 8px; letter-spacing: .01em; }
+.railhead { position: sticky; top: 0; z-index: 2; background: var(--panel); margin: 0 -12px 6px calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding: 12px 12px 10px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); }
+.rail { padding-top: 0; }   /* the sticky header carries the top padding, so nothing scrolls into view above it */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+button, select, input { font: inherit; color: inherit; box-sizing: border-box; }
+button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 500; }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+select, input[type=text], input[type=number] { border: 1px solid var(--line); background: var(--bg); border-radius: 5px; padding: 4px 6px; min-width: 0; }
+input[type=number] { width: 7em; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+input[type=text] { width: 100%; font-family: var(--mono); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+details { border-top: 1px solid var(--line); padding: 6px 0; }
+summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 4px 0; list-style: none; display: flex; justify-content: space-between; }
+summary::after { content: "+"; color: var(--muted); }
+details[open] summary::after { content: "–"; }
+.param { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; padding: 4px 0; }
+.param.wide { grid-template-columns: 1fr; }
+.param:has(.pct) { grid-template-columns: minmax(0, 1fr) auto auto; }
+.units { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.35; }
+.pct { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
+.param label { font-size: 13px; }
+.param small { display: block; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.param input:invalid, .param input.bad { border-color: var(--bad); }
+canvas { display: block; width: 100%; height: 100%; }
+#stage { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; min-height: 240px; }
+#busy { position: absolute; inset: auto 0 0 0; height: 3px; background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 50% 100%; animation: slide 1.1s linear infinite; }
+#busy[hidden] { display: none; }
+@keyframes slide { from { background-position: -100% 0 } to { background-position: 300% 0 } }
+@media (prefers-reduced-motion: reduce) { #busy { animation: none; background: var(--accent); } }
+#status { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: pre-wrap; max-height: 7.5em; overflow-y: auto; min-width: 0; }
+#status .err { color: var(--bad); }
+.vec { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.vec label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.vec label input[type=number] { width: 5em; }
+.seps { display: grid; gap: 4px; }
+.sep { display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 4px; align-items: center; }
+.sep input[type=number] { width: 100%; }
+.sep button { padding: 2px 8px; }
+button.add { margin-top: 4px; font-size: 12px; padding: 3px 8px; }
+.hint { color: var(--muted); font-size: 12px; }
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="railhead">
+      <h1>Modulith Insert Generator</h1>
+      <div class="toolbar">
+        <button id="render" class="primary" type="button" title="Ctrl/⌘+Enter">Render</button>
+        <button id="download" type="button" title="STL + the .scad + your parameters, zipped">Download zip</button>
+      </div>
+      <div class="toolbar" style="margin-top:6px">
+        <button id="reset" type="button" title="Put every parameter back to the .scad defaults">Reset</button>
+        <button id="import" type="button" title="Load a .params.json from a downloaded zip">Import</button>
+        <input id="importfile" type="file" accept=".json,application/json" hidden>
+      </div>
+      <p class="units">Dimensions are in millimetres. Where a <b>%</b> box is offered, ticking it makes that value a percentage of the available space instead.</p>
+    </div>
+    <form id="form" autocomplete="off"></form>
+  </aside>
+  <section class="view">
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" id="iso" aria-pressed="true">Iso 2D</button>
+        <button type="button" id="orbit" aria-pressed="false">3D orbit</button>
+      </div>
+      <label><input type="checkbox" id="edges" checked> Edges</label>
+      <button type="button" id="fit">Fit</button>
+      <div class="seg" role="group" aria-label="Render history">
+        <button type="button" id="prev" title="Previous render (A/B)" disabled>◀</button>
+        <button type="button" id="next" title="Next render (A/B)" disabled>▶</button>
+      </div>
+      <span id="histpos" class="hint" style="font-family:var(--mono)"></span>
+      <span id="dims" class="hint" style="font-family:var(--mono)"></span>
+    </div>
+    <div id="stage"><div id="busy" hidden></div></div>
+    <div id="status">Loading…</div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/+esm";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js/+esm";
+import { STLLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/STLLoader.js/+esm";
+
+const OPENSCAD_URL = "https://cdn.jsdelivr.net/npm/openscad-wasm@0.0.4/openscad.js";
+const SETTINGS_KEY = "modulith-insert-settings";   // last rendered parameters, restored on reload
+const VIEW_KEY = "modulith-insert-view";           // view mode + both cameras, saved after every camera move
+const SCAD_FILE = "modulith_insert.scad";
+// default insert (240 1W 1H), pre-rendered so the page shows something before the 14 MB WASM arrives
+const DEFAULT_STL = "T3BlblNDQUQgTW9kZWwKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAACAPwAAAIAAAAAAMzONQgAAAADNzDRCMzONQpqZYUMAAAAAMzONQpqZYUPNzDRCAAAAAIA/AAAAAAAAAAAzM41CmplhQwAAAAAzM41CAAAAAM3MNEIzM41CAAAAAAAAAAAAAAAAAAAAAAAAAACAPzMzjUKamWFDzcw0Qs3MikJmZmBDzcw0QjMzjUIAAAAAzcw0QgAAAAAAAAAAAAAAAIA/MzONQpqZYUPNzDRCmJmZP2ZmYEPNzDRCzcyKQmZmYEPNzDRCAAAAAAAAAAAAAAAAgD+YmZk/ZmZgQ83MNEIAAAAAmplhQ83MNEKYmZk/mJmZP83MNEIAAAAAAIAAAAAAAACAPwAAAACamWFDzcw0QpiZmT9mZmBDzcw0QjMzjUKamWFDzcw0QgAAAAAAgAAAAAAAAIA/zcyKQpiZmT/NzDRCMzONQgAAAADNzDRCzcyKQmZmYEPNzDRCAAAAAACAAAAAAAAAgD+YmZk/mJmZP83MNEIzM41CAAAAAM3MNELNzIpCmJmZP83MNEIAAAAAAAAAAAAAAACAP5iZmT+YmZk/zcw0QgAAAAAAAAAAzcw0QjMzjUIAAAAAzcw0QgAAAAAAAAAAAAAAAIA/AAAAAAAAAADNzDRCmJmZP5iZmT/NzDRCAAAAAJqZYUPNzDRCAAAAAAAAAAAAAAAAgL8AAAAAAAAAAAAAAAAzM41CmplhQwAAAAAzM41CAAAAAAAAAAAAAAAAAIAAAAAAAACAvzMzjUKamWFDAAAAAAAAAAAAAAAAAAAAAAAAAACamWFDAAAAAAAAAACAvwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJqZYUPNzDRCAAAAAJqZYUMAAAAAAAAAAIC/AAAAgAAAAAAAAAAAmplhQ83MNEIAAAAAAAAAAAAAAAAAAAAAAAAAAM3MNEIAAAAAAAAAAIA/AAAAgDMzjUKamWFDAAAAAAAAAACamWFDzcw0QjMzjUKamWFDzcw0QgAAAAAAAAAAgD8AAAAAAAAAAJqZYUPNzDRCMzONQpqZYUMAAAAAAAAAAJqZYUMAAAAAAAAAAAAAAACAvwAAAAAAAAAAAAAAAAAAAAAzM41CAAAAAM3MNEIAAAAAAAAAAM3MNEIAAAAAAAAAAIC/AAAAgDMzjUIAAAAAzcw0QgAAAAAAAAAAAAAAADMzjUIAAAAAAAAAAAAAAACAvwAAAAAAAAAAzcyKQpiZmT8AAIA/zcyKQmZmYEPNzDRCzcyKQmZmYEMAAIA/AAAAAIC/AAAAgAAAAADNzIpCZmZgQ83MNELNzIpCmJmZPwAAgD/NzIpCmJmZP83MNEIAAAAAgD8AAACAAAAAAJiZmT+YmZk/zcw0QpiZmT9mZmBDAACAP5iZmT9mZmBDzcw0QgAAAACAPwAAAAAAAAAAmJmZP2ZmYEMAAIA/mJmZP5iZmT/NzDRCmJmZP5iZmT8AAIA/AAAAAAAAAACAvwAAAACYmZk/ZmZgQwAAgD/NzIpCZmZgQ83MNEKYmZk/ZmZgQ83MNEIAAAAAAAAAAIC/AAAAgM3MikJmZmBDzcw0QpiZmT9mZmBDAACAP83MikJmZmBDAACAPwAAAAAAAAAAgD8AAACAzcyKQpiZmT8AAIA/mJmZP5iZmT/NzDRCzcyKQpiZmT/NzDRCAAAAAAAAAACAPwAAAACYmZk/mJmZP83MNELNzIpCmJmZPwAAgD+YmZk/mJmZPwAAgD8AAAAAAIAAAAAAAACAP5iZmT9mZmBDAACAP83MikKYmZk/AACAP83MikJmZmBDAACAPwAAAAAAAAAAAAAAAIA/zcyKQpiZmT8AAIA/mJmZP2ZmYEMAAIA/mJmZP5iZmT8AAIA/AAA=";
+
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+// ---------------------------------------------------------------- customizer parser
+// Reads OpenSCAD customizer syntax: `/* [Group] */`, `// description` lines, `name = value; // [a, b] | [lo:step:hi] | step`.
+function parseCustomizer(src) {
+  const params = []; let group = "Parameters", desc = [];
+  for (const raw of src.split("\n")) {
+    const line = raw.trim();
+    const g = line.match(/^\/\*\s*\[(.+?)\]\s*\*\/$/);
+    if (g) { group = g[1]; desc = []; if (group === "Hidden") break; continue; }
+    if (line.startsWith("//")) { desc.push(line.replace(/^\/\/\s?/, "")); continue; }
+    const m = line.match(/^(\w+)\s*=\s*([^;]+);\s*(?:\/\/\s*(.*))?$/);
+    if (!m) { desc = []; continue; }
+    let value; try { value = JSON.parse(m[2].trim()); } catch { desc = []; continue; }   // not a literal → not a customizer param
+    const p = { name: m[1], group, value, desc: desc.join(" ") }; desc = [];
+    const tail = (m[3] || "").trim();
+    const br = tail.match(/^\[(.*)\]$/);
+    if (br && br[1].includes(":")) { const r = br[1].split(":").map(Number); p.range = r.length === 3 ? { min: r[0], step: r[1], max: r[2] } : { min: r[0], max: r[1] }; }
+    else if (br) p.options = br[1].split(",").map(s => s.trim()).map(s => typeof value === "number" ? Number(s) : s);
+    else if (tail && !isNaN(Number(tail))) p.step = Number(tail);
+    params.push(p);
+  }
+  return params;
+}
+
+// ---------------------------------------------------------------- form
+const form = $("form");
+const controls = {};   // name → () => value (throws on invalid)
+const VEC_NAMES = { clearance: ["width", "depth"], chamber_wall_thickness: ["bottom", "top"], label_size: ["width", "depth", "height", "radius"],
+  label_relief: ["width", "depth", "pocket"], label_walls: ["front", "back", "left", "right"], fingerslide_walls: ["front", "back", "left", "right"] };
+const setters = {};    // name → (value) => void, for restoring a render from history
+function buildForm(params) {
+  const groups = [...new Set(params.map(p => p.group))];
+  for (const g of groups) {
+    const d = document.createElement("details");
+    d.open = ["Drawer", "Perimeter Walls and Floor", "Subdivisions"].includes(g);
+    d.innerHTML = `<summary>${g}</summary>`;
+    for (const p of params.filter(p => p.group === g)) {
+      const row = document.createElement("div"); row.className = "param";
+      const id = "p_" + p.name;
+      const label = `<label for="${id}" title="${p.desc.replace(/"/g, "&quot;")}">${p.name.replace(/_/g, " ")}${p.desc ? `<small>${p.desc}</small>` : ""}</label>`;
+      let input;
+      if (typeof p.value === "boolean") {
+        row.innerHTML = label + `<input type="checkbox" id="${id}" ${p.value ? "checked" : ""}>`;
+        input = row.querySelector("input"); controls[p.name] = () => input.checked; setters[p.name] = v => input.checked = v;
+      } else if (p.options) {
+        row.innerHTML = label + `<select id="${id}">${p.options.map(o => `<option value="${o}" ${o === p.value ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+        input = row.querySelector("select"); controls[p.name] = () => typeof p.value === "number" ? Number(input.value) : input.value; setters[p.name] = v => input.value = String(v);
+      } else if (typeof p.value === "number") {
+        const r = p.range || {};
+        row.innerHTML = label + `<input type="number" id="${id}" value="${p.value}" step="${p.step ?? r.step ?? "any"}" ${r.min != null ? `min="${r.min}"` : ""} ${r.max != null ? `max="${r.max}"` : ""}>`;
+        input = row.querySelector("input"); controls[p.name] = () => { const v = Number(input.value); if (input.value === "" || isNaN(v)) throw new Error(`${p.name}: not a number`); return v; };
+        setters[p.name] = v => input.value = String(v);
+        if (p.name === "height") {   // % of the available height, stored in the file's negative-percent form
+          input.insertAdjacentHTML("afterend", `<label class="pct"><input type="checkbox" id="${id}_pct"> %</label>`);
+          const pct = row.querySelector(`#${id}_pct`), base = controls[p.name];
+          controls[p.name] = () => { const v = base(); return pct.checked && v > 0 ? -v : v; };
+          setters[p.name] = v => { pct.checked = v < 0; input.value = String(Math.abs(v)); };
+        }
+      } else if (Array.isArray(p.value) && /_separator_config$/.test(p.name)) {
+        // separator editor: one line per separator (pos / from / to / %), +/- buttons; % becomes the file's negative-percent form
+        row.className += " wide";
+        row.innerHTML = label + `<div class="seps" id="${id}"></div><button type="button" class="add" id="${id}_add">+ separator</button>`;
+        const box = row.querySelector(".seps");
+        const addLine = (pos = "", from = "", to = "", pct = false) => {
+          const line = document.createElement("div"); line.className = "sep";
+          line.innerHTML = `<input type="number" step="any" placeholder="pos" value="${pos}" title="centerline from the inner left/front face">
+            <input type="number" step="any" placeholder="from" value="${from}" title="start along the separator (blank = this wall)">
+            <input type="number" step="any" placeholder="to" value="${to}" title="end along the separator (blank = far wall)">
+            <label><input type="checkbox" ${pct ? "checked" : ""}> %</label><button type="button" title="remove">−</button>`;
+          line.querySelector("button").onclick = () => line.remove();
+          box.appendChild(line);
+        };
+        row.querySelector(".add").onclick = () => addLine();
+        const num = (el, what) => { const v = Number(el.value); if (el.value === "" || isNaN(v) || v < 0) { el.classList.add("bad"); throw new Error(`${p.name}: ${what} must be a number >= 0`); } el.classList.remove("bad"); return v; };
+        controls[p.name] = () => [...box.querySelectorAll(".sep")].map(line => {
+          const [pos, from, to] = line.querySelectorAll("input[type=number]"), pct = line.querySelector("input[type=checkbox]").checked, k = pct ? -1 : 1;
+          const P = num(pos, "pos") * k, F = from.value === "" ? 0 : num(from, "from") * k, T = to.value === "" ? 0 : num(to, "to") * k;
+          return F === 0 && T === 0 ? P : [P, F, T];
+        });
+        setters[p.name] = v => { box.innerHTML = ""; for (const e of v) { const a = Array.isArray(e) ? e : [e, 0, 0], pct = a.some(x => x < 0);
+          addLine(Math.abs(a[0]), a[1] === 0 ? "" : Math.abs(a[1]), a[2] === 0 ? "" : Math.abs(a[2]), pct); } };
+        setters[p.name](p.value);
+      } else if (Array.isArray(p.value)) {
+        // flat vector: one input per component; [0:1:1] vectors are checkboxes
+        row.className += " wide";
+        const names = VEC_NAMES[p.name] || [];
+        const flags = p.range && p.range.min === 0 && p.range.max === 1;
+        row.innerHTML = label + `<div class="vec" id="${id}">${p.value.map((v, i) => flags
+          ? `<label><input type="checkbox" ${v ? "checked" : ""}> ${names[i] ?? i}</label>`
+          : `<label><span>${names[i] ?? i}</span><input type="number" step="${p.step ?? "any"}" value="${v}"></label>`).join("")}</div>`;
+        const inputs = [...row.querySelectorAll("input")];
+        controls[p.name] = () => inputs.map((el, i) => { if (flags) return el.checked ? 1 : 0;
+          const v = Number(el.value); const bad = el.value === "" || isNaN(v); el.classList.toggle("bad", bad);
+          if (bad) throw new Error(`${p.name}: ${names[i] ?? i} must be a number`); return v; });
+        setters[p.name] = v => inputs.forEach((el, i) => { if (flags) el.checked = !!v[i]; else el.value = String(v[i]); });
+      } else {
+        row.className += " wide";
+        row.innerHTML = label + `<input type="text" id="${id}" value="${String(p.value).replace(/"/g, "&quot;")}">`;
+        input = row.querySelector("input"); controls[p.name] = () => input.value; setters[p.name] = v => input.value = v;
+      }
+      d.appendChild(row);
+    }
+    form.appendChild(d);
+  }
+  // fields that only matter when another setting is on: hide them otherwise (checked on every change)
+  const only = [
+    ["vertical_separator_config", "vertical_irregular_subdivisions", v => v], ["vertical_chambers", "vertical_irregular_subdivisions", v => !v],
+    ["horizontal_separator_config", "horizontal_irregular_subdivisions", v => v], ["horizontal_chambers", "horizontal_irregular_subdivisions", v => !v],
+    ["stopper_depth", "drawer_stoppers", v => v], ["headroom", "height", v => v <= 0],
+    ...["label_position", "label_size", "label_relief", "label_walls", "label_dividers"].map(n => [n, "label_style", v => v !== "disabled"]),
+    ...["fingerslide_radius", "fingerslide_walls"].map(n => [n, "fingerslide", v => v !== "none"]),
+    ["text_2_text", "text_2", v => v], ...["text_size", "text_depth", "text_font"].map(n => [n, "text_1", v => v, "text_2"]),
+  ];
+  const cutoutDeps = ["wallcutout_position", "wallcutout_width", "wallcutout_angle", "wallcutout_height", "wallcutout_corner_radius"];
+  const refresh = () => {
+    for (const [dep, master, pred, alt] of only) { const row = $("p_" + dep)?.closest(".param"); if (row) row.hidden = !(pred(controls[master]()) || (alt && controls[alt]())); }
+    const cuts = controls.wallcutout_vertical() !== "disabled" || controls.wallcutout_horizontal() !== "disabled";
+    for (const dep of cutoutDeps) $("p_" + dep).closest(".param").hidden = !cuts;
+  };
+  form.addEventListener("input", refresh); form.addEventListener("change", refresh); refresh();
+  form.refresh = refresh;
+}
+function currentParams() { const o = {}; for (const [k, get] of Object.entries(controls)) o[k] = get(); return o; }
+function setParams(p) { for (const [k, v] of Object.entries(p)) setters[k]?.(v); form.refresh?.(); }
+let defaults = {};   // parsed from the .scad; Reset restores them
+const scadLiteral = (v) => JSON.stringify(v);   // numbers, strings, booleans and (nested) vectors are all valid OpenSCAD literals in JSON form
+const defineArgs = (params) => Object.entries(params).flatMap(([k, v]) => ["-D", `${k}=${scadLiteral(v)}`]);
+
+// ---------------------------------------------------------------- OpenSCAD in a worker (one WASM instance per render: callMain runs once per instance)
+const FONT_URL = new URL("LiberationSans-Regular.ttf", location.href).href;   // published beside the page; the WASM build ships no fonts
+const workerSrc = `
+let mod, font;
+self.onmessage = async ({ data: { src, args, fontUrl } }) => {
+  const logs = [];
+  try {
+    mod ??= await import(${JSON.stringify(OPENSCAD_URL)});
+    font ??= await fetch(fontUrl).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+    const o = await mod.createOpenSCAD({ noInitialRun: true, print: s => logs.push(s), printErr: s => logs.push(s) });
+    const inst = o.getInstance();
+    const mk = p => { try { inst.FS.mkdir(p); } catch {} };
+    mk("/etc"); mk("/etc/fonts"); mk("/fonts"); mk("/tmp");
+    inst.FS.writeFile("/etc/fonts/fonts.conf", '<?xml version="1.0"?><fontconfig><dir>/fonts</dir><cachedir>/tmp</cachedir></fontconfig>');
+    if (font) inst.FS.writeFile("/fonts/LiberationSans-Regular.ttf", new Uint8Array(font));
+    inst.FS.writeFile("/in.scad", src);
+    try { inst.callMain(["/in.scad", "-o", "/out.stl", "--export-format", "binstl", ...args]); } catch (e) { logs.push("ERROR: " + e); }
+    let stl = null; try { stl = inst.FS.readFile("/out.stl", { encoding: "binary" }).slice(); } catch {}
+    self.postMessage({ stl, logs }, stl ? [stl.buffer] : []);
+  } catch (e) { self.postMessage({ stl: null, logs: [...logs, "ERROR: " + e] }); }
+};`;
+let worker;
+function renderSCAD(src, args) {
+  worker ??= new Worker(URL.createObjectURL(new Blob([workerSrc], { type: "text/javascript" })), { type: "module" });
+  return new Promise((resolve, reject) => {
+    worker.onmessage = (e) => resolve(e.data);
+    worker.onerror = (e) => { worker = null; reject(new Error(e.message || "worker failed")); };
+    worker.postMessage({ src, args, fontUrl: FONT_URL });
+  });
+}
+
+// ---------------------------------------------------------------- viewer
+const stage = $("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(-1, -2, 3); scene.add(sun);
+const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, -5000, 5000);
+const persp = new THREE.PerspectiveCamera(38, 1, 1, 5000);
+for (const c of [ortho, persp]) c.up.set(0, 0, 1);          // OpenSCAD is Z-up
+let camera = ortho;
+const controls3d = new OrbitControls(persp, renderer.domElement);
+const controlsIso = new OrbitControls(ortho, renderer.domElement);
+controlsIso.enableRotate = false;                           // iso stays a 2D drawing: pan + zoom only
+let mesh, edges, bbox = new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(70.6, 225.6, 45.2));
+let fitR = 0;   // framing radius from the last fit(); re-renders keep the camera, only Fit (or the first model) reframes
+const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.75, metalness: 0 });
+const edgeMaterial = new THREE.LineBasicMaterial();
+
+function applyTheme() {
+  scene.background = new THREE.Color(css("--panel"));
+  material.color.set(css("--model"));
+  edgeMaterial.color.set(css("--edge"));
+}
+function showSTL(buffer) {
+  const geo = new STLLoader().parse(buffer); geo.computeVertexNormals();
+  if (mesh) { scene.remove(mesh, edges); mesh.geometry.dispose(); edges.geometry.dispose(); }
+  mesh = new THREE.Mesh(geo, material);
+  edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), edgeMaterial);
+  edges.visible = $("edges").checked;
+  scene.add(mesh, edges);
+  geo.computeBoundingBox(); bbox = geo.boundingBox;
+  const s = bbox.getSize(new THREE.Vector3());
+  $("dims").textContent = `${s.x.toFixed(1)} × ${s.y.toFixed(1)} × ${s.z.toFixed(1)} mm · ${(geo.attributes.position.count / 3).toLocaleString()} tris`;
+  if (!fitR) fit();
+}
+function fit() {
+  const c = bbox.getCenter(new THREE.Vector3()), r = bbox.getSize(new THREE.Vector3()).length() / 2;
+  fitR = r;
+  const dir = new THREE.Vector3(-1, -1, 1).normalize();     // front-left-above: labels on the back wall face the viewer
+  ortho.position.copy(c).addScaledVector(dir, r * 4); ortho.zoom = 1; controlsIso.target.copy(c);
+  persp.position.copy(c).addScaledVector(dir, r / Math.sin(THREE.MathUtils.degToRad(19)) * 1.1); controls3d.target.copy(c);
+  persp.near = r / 50; persp.far = r * 50;
+  resize();
+}
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  const r = fitR * 1.15, a = w / h;
+  ortho.left = -r * a; ortho.right = r * a; ortho.top = r; ortho.bottom = -r; ortho.updateProjectionMatrix();
+  persp.aspect = a; persp.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+renderer.setAnimationLoop(() => { (camera === ortho ? controlsIso : controls3d).update(); renderer.render(scene, camera); });
+
+function setView(mode) {
+  camera = mode === "iso" ? ortho : persp;
+  controlsIso.enabled = camera === ortho; controls3d.enabled = camera === persp;
+  $("iso").setAttribute("aria-pressed", String(camera === ortho));
+  $("orbit").setAttribute("aria-pressed", String(camera === persp));
+}
+function saveView() {
+  try { localStorage.setItem(VIEW_KEY, JSON.stringify({ mode: camera === ortho ? "iso" : "orbit", fitR,
+    iso: { p: ortho.position.toArray(), t: controlsIso.target.toArray(), z: ortho.zoom },
+    orbit: { p: persp.position.toArray(), t: controls3d.target.toArray() } })); } catch {}
+}
+function restoreView() {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY)); if (!v) return;
+    fitR = v.fitR || fitR;
+    ortho.position.fromArray(v.iso.p); controlsIso.target.fromArray(v.iso.t); ortho.zoom = v.iso.z;
+    persp.position.fromArray(v.orbit.p); controls3d.target.fromArray(v.orbit.t);
+    setView(v.mode); resize();
+  } catch {}
+}
+controlsIso.addEventListener("end", saveView);
+controls3d.addEventListener("end", saveView);
+$("iso").onclick = () => { setView("iso"); saveView(); };
+$("orbit").onclick = () => { setView("orbit"); saveView(); };
+$("fit").onclick = () => { fit(); saveView(); };
+$("edges").onchange = () => { if (edges) edges.visible = $("edges").checked; };
+
+// ---------------------------------------------------------------- wiring
+const status = $("status");
+function say(lines, isError = false) {
+  status.textContent = ""; const span = document.createElement("span"); if (isError) span.className = "err";
+  span.textContent = Array.isArray(lines) ? lines.join("\n") : lines; status.appendChild(span);
+}
+let scadSrc = "", lastSTL = null, lastParams = null, rendering = false;
+const interesting = (l) => /^(ECHO|WARNING|ERROR|DEPRECATED|TRACE)/.test(l);
+
+// render history for A/B: browser-style (rendering from the middle drops the forward entries), capped at 20
+const history = []; let hi = -1;
+function showEntry(i) {
+  hi = i; const e = history[i];
+  setParams(e.params); lastSTL = e.stl; lastParams = e.params;
+  showSTL(e.stl.buffer);
+  say([e.note, ...e.notes]);
+  $("prev").disabled = hi <= 0; $("next").disabled = hi >= history.length - 1;
+  $("histpos").textContent = history.length > 1 ? `${hi + 1}/${history.length}` : "";
+}
+function pushEntry(e) {
+  history.splice(hi + 1); history.push(e); if (history.length > 20) history.shift();
+  showEntry(history.length - 1);
+}
+$("prev").onclick = () => hi > 0 && showEntry(hi - 1);
+$("next").onclick = () => hi < history.length - 1 && showEntry(hi + 1);
+
+async function render() {
+  if (rendering) return;
+  let params; try { params = currentParams(); } catch (e) { say(String(e.message), true); return; }
+  rendering = true; $("render").disabled = true; $("busy").hidden = false;
+  say(worker ? "Rendering…" : "Loading OpenSCAD (14 MB, first time only), then rendering…");
+  const t0 = performance.now();
+  try {
+    const { stl, logs } = await renderSCAD(scadSrc, defineArgs(params));
+    const notes = logs.filter(interesting).map(l => l.replace(/ in file \/in\.scad,/, ",").replace(/^ECHO: "(.*)"$/, "$1"));
+    if (stl) {
+      pushEntry({ params, stl, notes, note: `Rendered in ${((performance.now() - t0) / 1000).toFixed(1)} s` });
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(params)); } catch {}   // per-viewer convenience; may be unavailable
+    } else say(["Render failed.", ...notes], true);
+  } catch (e) { say("OpenSCAD could not run here: " + e.message, true); }
+  rendering = false; $("render").disabled = false; $("busy").hidden = true;
+}
+$("render").onclick = render;
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); render(); } });
+
+const downloads = await window.claude?.use?.("downloads").catch(() => null);
+if (!downloads) $("download").hidden = true;
+$("download").onclick = async () => {
+  if (!lastSTL) { say("Render first.", true); return; }
+  const p = lastParams, base = `modulith-insert-${p.drawer_depth}-${p.drawer_width}W-${p.drawer_height}H`;
+  const zip = new JSZip();
+  zip.file(base + ".stl", lastSTL);
+  zip.file(SCAD_FILE, scadSrc);
+  zip.file(base + ".params.json", JSON.stringify(p, null, 1));
+  try { await downloads.save({ filename: base + ".zip", data: await zip.generateAsync({ type: "blob" }) }); say("Saved " + base + ".zip"); }
+  catch (e) { if (e.code !== "declined") say("Download failed: " + (e.message || e.code), true); }
+};
+
+// ---------------------------------------------------------------- boot
+applyTheme();
+showSTL(Uint8Array.from(atob(DEFAULT_STL), c => c.charCodeAt(0)).buffer);
+restoreView();
+try {
+  scadSrc = await (await fetch(SCAD_FILE)).text();
+  const parsed = parseCustomizer(scadSrc);
+  buildForm(parsed);
+  defaults = Object.fromEntries(parsed.map(p => [p.name, p.value]));
+  $("reset").onclick = () => { setParams(defaults); say("Defaults restored. Press Render."); };
+  $("import").onclick = () => $("importfile").click();
+  $("importfile").onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const p = JSON.parse(await f.text());
+      const known = Object.keys(p).filter(k => k in setters), unknown = Object.keys(p).filter(k => !(k in setters));
+      if (!known.length) throw new Error("no recognised parameters in this file");
+      setParams(p);
+      say([`Imported ${known.length} parameters from ${f.name}. Press Render.`, ...(unknown.length ? [`Ignored (not in this version): ${unknown.join(", ")}`] : [])]);
+    } catch (err) { say(`Could not import ${f.name}: ${err.message}`, true); }
+  };
+  let restored = false;
+  try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); if (s) { setParams(s); restored = true; } } catch {}   // unknown keys are ignored, so an older save survives a .scad update
+  say(restored ? "Restoring your last settings…" : "Default insert shown (240 · 1W · 1H). Change parameters and press Render.");
+  render();
+} catch (e) {
+  say("Could not load " + SCAD_FILE + ": " + e.message, true);
+}
+</script>
+
+</body></html>
