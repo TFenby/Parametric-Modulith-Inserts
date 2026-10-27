@@ -9,7 +9,7 @@ The model is [`modulith_insert.scad`](modulith_insert.scad); it also opens in de
 
 ## License
 
-© TFenby. Licensed under [CC BY-NC-SA 4.0](LICENSE): free to use, remix and share for personal and community use with attribution; no commercial use; remixes must carry the same license.
+© Tyler Fenby. Licensed under [CC BY-NC-SA 4.0](LICENSE): free to use, remix and share for personal and community use with attribution; no commercial use; remixes must carry the same license.
 
 `LiberationSans-Regular.ttf` is not covered by this license; it is distributed under the SIL Open Font License 1.1.
 
