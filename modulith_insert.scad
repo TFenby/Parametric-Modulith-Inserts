@@ -1,5 +1,6 @@
 // Modulith (Jerrari Gen2) drawer insert generator
 // Drop-in dividers for Modulith drawers, with or without a floor. Options follow Gridfinity Extended's
+// License: CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/). Original work; not affiliated with Jerrari.
 // basic cup where they apply (no lip, stacking, magnets or base pads).
 //
 // Cavity formulas measured from the v2609 "decor drawer" STLs (59-270 deep, 1W-4W, 0.5H-2H):
